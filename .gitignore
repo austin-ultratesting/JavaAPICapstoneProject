@@ -1,3 +1,4 @@
 .vscode/*
 *.class
-capstone/target/*
+capstoneAPI/target/*
+.env
