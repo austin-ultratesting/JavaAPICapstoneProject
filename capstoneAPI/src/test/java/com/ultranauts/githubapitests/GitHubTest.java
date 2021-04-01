@@ -9,8 +9,6 @@ import org.testng.annotations.Test;
 
 import io.github.cdimascio.dotenv.Dotenv;
 import io.restassured.http.Header;
-import io.restassured.response.Response;
-
 import static io.restassured.RestAssured.*;
 
 import java.util.HashMap;
@@ -64,15 +62,13 @@ public class GitHubTest {
 
         Header authHeader = authorizedHeader();
 
-        Response austinAccount = given().
-                                    header(authHeader).
-                                 when().
-                                    get(apiURL + "/user");
-
-        System.out.println(austinAccount.asPrettyString());
-
-        austinAccount.then().
-                        statusCode(200);
+        given().
+            header(authHeader).
+        when().
+            get(apiURL + "/user").
+        then().
+            statusCode(200).
+            log().all(true);
     }
 
     @Test
@@ -86,15 +82,36 @@ public class GitHubTest {
 
         JSONObject newRepo = new JSONObject(bodyParameters);
 
+        given().
+            header(authHeader).
+            body(newRepo.toJSONString()).
+        when().
+            post(apiURL + "/user/repos").
+        then().
+            statusCode(201).
+            log().all(true);
+    }
 
-        Response createdRepoForUser = given().
-                                        header(authHeader).
-                                        body(newRepo.toJSONString()).
-                                      when().
-                                        post(apiURL + "/user/repos");
-            
-        createdRepoForUser.then().
-                                statusCode(201);            
+    @Test
+    public void updateRepository(){
+
+        Header authHeader = authorizedHeader();
+
+        Map<String,Object> bodyParameters = new HashMap<String,Object>();
+
+        bodyParameters.put("description", "Patched description on my newly created repository");
+        bodyParameters.put("private", "true");
+
+        JSONObject newRepo = new JSONObject(bodyParameters);
+
+        given().
+            header(authHeader).
+            body(newRepo.toJSONString()).
+        when().
+            patch(apiURL + "/repos/" + userAustin.getUserName() + "/APIGeneratedRepoPublic").
+        then().
+            statusCode(200).
+            log().all(true);            
     }
 
     @Test
@@ -102,12 +119,13 @@ public class GitHubTest {
 
         Header authHeader = authorizedHeader();
 
-        Response createdRepoForUser = given().
-                                        header(authHeader).
-                                      when().
-                                        delete(apiURL + "/repos/" + userAustin.getUserName() + "/APIGeneratedRepoPublic");
-            
-        createdRepoForUser.then().
-                                statusCode(204);            
+        given().
+            header(authHeader).
+        when().
+            delete(apiURL + "/repos/" + userAustin.getUserName() + "/APIGeneratedRepoPublic").
+        then().
+            statusCode(204).
+            log().all(true);            
+
     }
 }
