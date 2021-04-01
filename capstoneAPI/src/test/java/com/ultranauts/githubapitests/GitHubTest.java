@@ -11,6 +11,7 @@ import io.github.cdimascio.dotenv.Dotenv;
 import io.restassured.http.Header;
 import static io.restassured.RestAssured.*;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -90,6 +91,30 @@ public class GitHubTest {
         then().
             statusCode(201).
             log().all(true);
+    }
+
+    @Test
+    public void replaceRepositoryTopics(){
+
+        Header authHeader = authorizedHeader();
+
+        Header mediaType = new Header("Accept", "application/vnd.github.mercy-preview+json");
+
+        Map<String,Object> bodyParameters = new HashMap<String,Object>();
+
+        bodyParameters.put("names", Arrays.asList("sample","api","java","automation"));
+
+        JSONObject newRepo = new JSONObject(bodyParameters);
+
+        given().
+            header(authHeader).
+            header(mediaType).
+            body(newRepo.toJSONString()).
+        when().
+            put(apiURL + "/repos/" + userAustin.getUserName() + "/APIGeneratedRepoPublic" + "/topics").
+        then().
+            statusCode(200).
+            log().all(true);            
     }
 
     @Test
