@@ -1,26 +1,49 @@
 package com.ultranauts.githubapitests;
 
-import com.ultranauts.github.GitHub;
+import static io.restassured.RestAssured.given;
 
-import org.json.simple.JSONObject;
-import org.testng.Assert;
-import org.testng.annotations.BeforeTest;
-import org.testng.annotations.Test;
-
-import io.github.cdimascio.dotenv.Dotenv;
-import io.restassured.http.Header;
-import static io.restassured.RestAssured.*;
-
+import java.io.File;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
+import com.ultranauts.github.GitHub;
+
+import org.apache.commons.io.FileUtils;
+import org.json.simple.JSONObject;
+import org.openqa.selenium.OutputType;
+import org.openqa.selenium.PageLoadStrategy;
+import org.openqa.selenium.TakesScreenshot;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.firefox.FirefoxDriver;
+import org.openqa.selenium.firefox.FirefoxOptions;
+import org.testng.Assert;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.BeforeTest;
+import org.testng.annotations.Test;
+
+import io.github.bonigarcia.wdm.WebDriverManager;
+import io.github.cdimascio.dotenv.Dotenv;
+import io.restassured.http.Header;
 
 public class GitHubTest {
 
-    GitHub userAustin;
-    Dotenv dotenv;
-    String apiURL;
+    private GitHub userAustin;
+    private Dotenv dotenv;
+    private String apiURL;
+
+    private WebDriver driver;
+
+    private String repositoryURL;
+    private String screenshotFolder;
+
+    private FirefoxOptions options;
+
+    private void delay() throws InterruptedException{
+        Thread.sleep(15000);
+    }  
 
     private Header authorizedHeader(){
         String apiKey = userAustin.getUserAPIKey();
@@ -29,16 +52,39 @@ public class GitHubTest {
 
         return authHeader;
     }
+
+    private void saveWebSnapShot(WebDriver driver, String fileName) throws IOException{
+
+        TakesScreenshot scrShot =((TakesScreenshot)driver);
+        
+        File SrcFile=scrShot.getScreenshotAs(OutputType.FILE);
+
+        File DestFile=new File(screenshotFolder + "/" + fileName);  
+
+        FileUtils.copyFile(SrcFile, DestFile);
+    }
     
     @BeforeTest
-    public void init(){
+    public void init() throws IOException{
 
         userAustin = new GitHub();
         dotenv = Dotenv.load();
         apiURL = "https://api.github.com";
+        screenshotFolder = "target/screenshots";
+        repositoryURL = "https://github.com/" + userAustin.getUserName() + "?tab=repositories";
+        FileUtils.cleanDirectory(new File(screenshotFolder));
     }
 
-    @Test
+    @BeforeMethod
+    public void initBrowser(){
+        
+        WebDriverManager.firefoxdriver().setup();
+
+        options = new FirefoxOptions();
+        options.setPageLoadStrategy(PageLoadStrategy.EAGER);
+    }
+
+    @Test (priority = 0)
     public void confirmPERSONALAPIKEY(){
 
         String key = dotenv.get("PERSONAL_API_KEY");
@@ -48,7 +94,7 @@ public class GitHubTest {
         Assert.assertEquals(userAustin.getUserAPIKey(), key);   
     }
 
-    @Test
+    @Test (priority = 0)
     public void confirmPERSONALUSERNAME(){
 
         String name = dotenv.get("PERSONAL_USER_NAME");
@@ -58,7 +104,7 @@ public class GitHubTest {
         Assert.assertEquals(userAustin.getUserName(), name);   
     }
 
-    @Test
+    @Test (priority = 0)
     public void getPersonalGithubAccount(){
 
         Header authHeader = authorizedHeader();
@@ -72,8 +118,9 @@ public class GitHubTest {
             log().all(true);
     }
 
-    @Test
-    public void createRepository(){
+    @Test (priority = 1)
+    public void createRepository() throws IOException, InterruptedException{
+        driver = new FirefoxDriver(options);
 
         Header authHeader = authorizedHeader();
 
@@ -91,10 +138,23 @@ public class GitHubTest {
         then().
             statusCode(201).
             log().all(true);
+
+        delay();
+
+        //Maximize Window
+        driver.manage().window().maximize();
+        driver.manage().timeouts().implicitlyWait(20, TimeUnit.SECONDS);
+
+        driver.get(repositoryURL); 
+
+        saveWebSnapShot(driver,"SCRN 001 - Created Repository.png");
+
+        driver.quit();
     }
 
-    @Test
-    public void replaceRepositoryTopics(){
+    @Test (priority = 2)
+    public void replaceRepositoryTopics() throws IOException, InterruptedException{
+        driver = new FirefoxDriver(options);
 
         Header authHeader = authorizedHeader();
 
@@ -114,18 +174,31 @@ public class GitHubTest {
             put(apiURL + "/repos/" + userAustin.getUserName() + "/APIGeneratedRepoPublic" + "/topics").
         then().
             statusCode(200).
-            log().all(true);            
+            log().all(true);
+        
+        delay();
+
+        //Maximize Window
+        driver.manage().window().maximize();
+        driver.manage().timeouts().implicitlyWait(20, TimeUnit.SECONDS);
+        
+        driver.get(repositoryURL);
+
+        saveWebSnapShot(driver,"SCRN 002 - Repository topics updated.png");
+
+        driver.quit();
     }
 
-    @Test
-    public void updateRepository(){
+    @Test (priority = 3)
+    public void updateRepository() throws IOException, InterruptedException{
+        driver = new FirefoxDriver(options);
 
         Header authHeader = authorizedHeader();
 
         Map<String,Object> bodyParameters = new HashMap<String,Object>();
 
         bodyParameters.put("description", "Patched description on my newly created repository");
-        bodyParameters.put("private", "true");
+        //bodyParameters.put("private", "true");
 
         JSONObject newRepo = new JSONObject(bodyParameters);
 
@@ -136,11 +209,24 @@ public class GitHubTest {
             patch(apiURL + "/repos/" + userAustin.getUserName() + "/APIGeneratedRepoPublic").
         then().
             statusCode(200).
-            log().all(true);            
+            log().all(true);
+
+        delay();
+
+        //Maximize Window
+        driver.manage().window().maximize();
+        driver.manage().timeouts().implicitlyWait(20, TimeUnit.SECONDS);
+        
+        driver.get(repositoryURL);
+    
+        saveWebSnapShot(driver,"SCRN 003 - Repository set to private and updated description.png");
+
+        driver.quit();
     }
 
-    @Test
-    public void deleteRepository(){
+    @Test (priority = 4)
+    public void deleteRepository() throws IOException, InterruptedException{
+        driver = new FirefoxDriver(options);
 
         Header authHeader = authorizedHeader();
 
@@ -150,7 +236,18 @@ public class GitHubTest {
             delete(apiURL + "/repos/" + userAustin.getUserName() + "/APIGeneratedRepoPublic").
         then().
             statusCode(204).
-            log().all(true);            
+            log().all(true);
 
+        delay();
+
+        //Maximize Window
+        driver.manage().window().maximize();
+        driver.manage().timeouts().implicitlyWait(20, TimeUnit.SECONDS);
+        
+        driver.get(repositoryURL);
+    
+        saveWebSnapShot(driver,"SCRN 004 - Repository Deleted.png");
+
+        driver.quit();
     }
 }
